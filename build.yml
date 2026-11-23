@@ -1,0 +1,51 @@
+name: Build PlayerCannon
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Upload plugin jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlayerCannon
+          path: target/PlayerCannon.jar
+          if-no-files-found: error
+
+  release:
+    # Wird nur bei Tags wie v1.0.0 ausgeführt und erstellt ein GitHub Release mit der .jar
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download jar
+        uses: actions/download-artifact@v4
+        with:
+          name: PlayerCannon
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PlayerCannon.jar
+          generate_release_notes: true
